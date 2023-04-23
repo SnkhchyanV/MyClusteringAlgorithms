@@ -1,2 +1,2 @@
 # MyClusteringAlgorithms
-Here can be found clustering algorithm python realizations of @SnkhchyanV user.
+Here can be found clustering algorithm realizations on python by @SnkhchyanV.
