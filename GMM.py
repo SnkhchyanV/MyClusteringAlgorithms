@@ -1,9 +1,10 @@
 from sklearn.cluster import KMeans
+import scipy.stats
 import numpy as np
 
 
 class GMM:
-    def __init__(self, k, method='random_mean_std', max_iter=300, tol=1e-6):
+    def __init__(self, k, method='k-means', max_iter=300, tol=1e-6):
         self.k = k
         self.method = method
         self.max_iter = max_iter
@@ -16,9 +17,27 @@ class GMM:
 
     def init_centers(self, X):
         if self.method == 'random_mean_std':
-            pass  # generating K random means and std-s
+            mean_arr = np.zeros((self.k, X.shape[1]))
+            cov_arr = np.zeros((self.k, X.shape[1], X.shape[1]))
+
+            for i in range(self.k):
+                mean_arr[i] = np.random.choice(X[:, 0])
+                cov_arr[i] = np.diag(np.random.rand(X.shape[1]))
+
+            pi_arr = np.ones(self.k) / self.k
+
+            return mean_arr, cov_arr, pi_arr
         if self.method == 'random_mean':
-            pass  # generate K random means
+            mean_arr = np.zeros((self.k, X.shape[1]))
+            cov_arr = np.zeros((self.k, X.shape[1], X.shape[1]))
+
+            for i in range(self.k):
+                mean_arr[i] = np.random.choice(X[:, 0])
+                cov_arr[i] = np.diag(np.ones(X.shape[1]))
+
+            pi_arr = np.ones(self.k) / self.k
+
+            return mean_arr, cov_arr, pi_arr
         if self.method == 'k-means':
             kmeansM = KMeans(self.k)
             x_i_clusters = kmeansM.fit_predict(X)
@@ -28,7 +47,7 @@ class GMM:
             pi_arr = []
             for i in range(self.k):
                 X_i = X[x_i_clusters == i]
-                cov_arr.append(X_i.T)
+                cov_arr.append(np.cov(X_i.T))
                 pi_arr.append(X_i.shape[0]/X.shape[0])
 
                 # if m is quantity of features, k is number of clusters
@@ -70,20 +89,21 @@ class GMM:
         return -log_sum
 
     def __pdf(self, x, mean, cov):
-        proba = (1 / (cov * np.sqrt(2 * np.pi))) * np.exp((-1 / 2) * (((x - mean) / cov) ** 2))
+        proba = scipy.stats.norm()
+        #proba = (1 / (cov * np.sqrt(2 * np.pi))) * np.exp((-1 / 2) * (((x - mean) / cov) ** 2))
         return proba
 
     def __expectation(self, X):
         n, m = X.shape
         gamma_mtrx = np.zeros((n, self.k))
-
         for k in range(self.k):
             for i in range(n):
-                gamma_mtrx[i][k] = (self.pi_arr[k] * self.__pdf(X[i], self.mean_arr[k], self.cov_arr[k]))
+                print(self.__pdf(X[i], self.mean_arr[k], self.cov_arr[k]))
+                gamma_mtrx[i, k] = self.pi_arr[k] * self.__pdf(X[i], self.mean_arr[k], self.cov_arr[k])
                 summ = 0
                 for j in range(self.k):
-                    summ += (self.pi_arr[j] * self.__pdf(X[i], self.mean_arr[j], self.cov_arr[j]))
-                gamma_mtrx[i][k] /= summ
+                    summ += self.pi_arr[j] * self.__pdf(X[i], self.mean_arr[j], self.cov_arr[j])
+                gamma_mtrx[i, k] /= summ
 
         return gamma_mtrx
 
