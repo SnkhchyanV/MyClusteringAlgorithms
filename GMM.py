@@ -1,5 +1,5 @@
 from sklearn.cluster import KMeans
-import scipy.stats
+from scipy.stats import multivariate_normal
 import numpy as np
 
 
@@ -57,80 +57,78 @@ class GMM:
 
             return mean_arr, np.array(cov_arr), np.array(pi_arr)
 
-            #  pass # generate initial points by KMeans algo
         if self.method == 'random_divide':
-            pass  # divide data into K clusters randomly
+            N = X.shape[0]
+            np.random.shuffle(X)
+            batch_size = N / self.k
+            mean_arr = np.zeros((self.k, X.shape[1]))
+            cov_arr = np.zeros((self.k, X.shape[1], X.shape[1]))
+            pi_arr = np.ones(self.k) / self.k
+
+            for k in range(self.k):
+                batch = X[k * batch_size: (k + 1) * batch_size]
+                mean_arr[k] = np.mean(batch, axis=0)
+                cov_arr[k] = np.diag(np.var(batch, axis=0))
+
+            return mean_arr, cov_arr, pi_arr
         if self.method == 'random_gammas':
-            pass  # generate random gamma matrix
+            self.gamma_mtrx = np.random.rand(self.k, X.shape[0])
+            self.gamma_mtrx /= np.sum(self.gamma_mtrx, axis=0)
+            self.mean_arr = np.zeros((self.k, X.shape[1]))
+            self.cov_arr = np.zeros((self.k, X.shape[1], X.shape[1]))
+            self.pi_arr = np.zeros((self.k, 1))
+            self.__maximization(X)
+            return self.mean_arr,self.cov_arr, self.pi_arr
+
 
     def fit(self, X):
         self.mean_arr, self.cov_arr, self.pi_arr = self.init_centers(X)
         # self.loss = self.loss(...)
-
+        self.gamma_mtrx = np.zeros((self.k, X.shape[0]))
         for _ in range(self.max_iter):
-            self.gamma_mtrx = self.__expectation(X)
-            self.mean_arr, self.cov_arr, self.pi_arr = self.__maximization(X)
+            self.__expectation(X)
+            self.__maximization(X)
 
-            loss = self.loss_NLL(X, self.mean_arr, self.cov_arr, self.pi_arr)
-            if loss <= self.tol:  # add tolerance comparison
+            self.loss = self.loss_NLL(X, self.mean_arr, self.cov_arr, self.pi_arr)
+            if self.loss <= self.tol:  # add tolerance comparison
                 break
 
-            self.loss = loss
-
     def loss_NLL(self, X, mean_arr, cov_arr, pi_arr):
-        log_sum = 0
-        for i in range(X.shape[0]):
-            summ = 0
-            for k in range(self.k):
-                summ += pi_arr[k] * self.__pdf(X, mean_arr[k], cov_arr[k])
-                # summ = np.sum((pi_arr * self.__pdf(X, mean_arr, cov_arr)),axis=0)
-            log_sum += np.log(summ)
-
+        lh = np.zeros((self.k, X.shape[0]))
+        for k in range(self.k):
+            lh[k] = pi_arr[k] * self.__pdf(X, mean_arr[k], cov_arr[k])
+            # summ = np.sum((pi_arr * self.__pdf(X, mean_arr, cov_arr)),axis=0)
+        l_sum = np.sum(lh, axis=0)
+        log_sum = np.sum(np.log(l_sum), axis=0)
         return -log_sum
 
-    def __pdf(self, x, mean, cov):
-        proba = scipy.stats.norm()
-        #proba = (1 / (cov * np.sqrt(2 * np.pi))) * np.exp((-1 / 2) * (((x - mean) / cov) ** 2))
+    def __pdf(self, X, mean, cov):
+        proba = multivariate_normal.pdf(X, mean, cov)
         return proba
 
     def __expectation(self, X):
-        n, m = X.shape
-        gamma_mtrx = np.zeros((n, self.k))
         for k in range(self.k):
-            for i in range(n):
-                print(self.__pdf(X[i], self.mean_arr[k], self.cov_arr[k]))
-                gamma_mtrx[i, k] = self.pi_arr[k] * self.__pdf(X[i], self.mean_arr[k], self.cov_arr[k])
-                summ = 0
-                for j in range(self.k):
-                    summ += self.pi_arr[j] * self.__pdf(X[i], self.mean_arr[j], self.cov_arr[j])
-                gamma_mtrx[i, k] /= summ
-
-        return gamma_mtrx
+            self.gamma_mtrx[k] = self.pi_arr[k] * self.__pdf(X, self.mean_arr[k], self.cov_arr[k])
+        sum_gammas = np.sum(self.gamma_mtrx, axis=0)
+        self.gamma_mtrx /= sum_gammas
 
     def __maximization(self, X):
-        mean_arr = np.zeros((self.k, X.shape[1]))
-        cov_arr = np.zeros((self.k, X.shape[1], X.shape[1]))
-        pi_arr = np.zeros((self.k, 1))
-        Nk = np.sum(self.gamma_mtrx, axis=0)
-        Nk /= X.shape[0]
-        # mean_arr = np.sum ((self.gamma_mtrx.dot(X)) , axis=0 )
+        Nk = np.sum(self.gamma_mtrx, axis=1)
         for k in range(self.k):
-            for i in range(X.shape[0]):
-                mean_arr[k] += self.gamma_mtrx[i][k]*X[i]
-            mean_arr[k] /= Nk[k]
+            self.mean_arr[k] = np.sum((self.gamma_mtrx[k].reshape(-1, 1)*X), axis=0)
+            self.mean_arr[k] /= Nk[k]
 
-            for i in range(X.shape[0]):
-                cov_arr[k] = self.gamma_mtrx[i][k] * ((X[i] - mean_arr[k]).dot((X[i]-mean_arr[k]).T))
-            cov_arr[k] /= Nk[k]
-            pi_arr[k] = Nk[k]/X.shape[0]
+            temp = X - self.mean_arr[k]
+            self.cov_arr[k] = np.dot((self.gamma_mtrx[k] * temp.T), temp)
+            self.cov_arr[k] /= Nk[k]
 
-        return mean_arr, cov_arr, pi_arr
+            self.pi_arr[k] = Nk[k]/X.shape[0]
 
     def predict(self, X):
-        prediction_proba = self.__expectation(X)
-        y = np.argmax(prediction_proba, axis=0)
+        self.__expectation(X)
+        y = np.argmax(self.gamma_mtrx, axis=0)
         return y
 
     def predict_proba(self, X):
-        # return predictions using expectation function
-        return self.__expectation(X)
+        self.__expectation(X)
+        return self.gamma_mtrx.T
