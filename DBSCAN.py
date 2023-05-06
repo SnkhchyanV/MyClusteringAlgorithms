@@ -63,11 +63,11 @@ class DBSCAN:
 
     def __distances(self, X):
         n = X.shape[0]
-        mtrx_of_distances = np.zeros((n, n))
+        distance_matrix = np.zeros((n, n))
         for i in range(n):
             for j in range(n):
-                mtrx_of_distances[i][j] = np.sqrt(np.sum((X[i]-X[j])**2))
-        return mtrx_of_distances
+                distance_matrix[i][j] = np.sqrt(np.sum((X[i]-X[j])**2))
+        return distance_matrix
 
     def predict(self):
         return self.predicted_labels
