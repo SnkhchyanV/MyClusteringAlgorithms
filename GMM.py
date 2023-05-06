@@ -89,9 +89,14 @@ class GMM:
             self.__expectation(X)
             self.__maximization(X)
 
-            self.loss = self.loss_NLL(X, self.mean_arr, self.cov_arr, self.pi_arr)
-            if self.loss <= self.tol:  # add tolerance comparison
+           new_loss = self.loss + self.loss_NLL(X, self.mean_arr, self.cov_arr, self.pi_arr)
+           if new_loss <=self.tol:
                 break
+           self.loss = new_loss
+            
+           # self.loss = self.loss_NLL(X, self.mean_arr, self.cov_arr, self.pi_arr)
+           # if self.loss <= self.tol:  # add tolerance comparison
+           #     break
 
     def loss_NLL(self, X, mean_arr, cov_arr, pi_arr):
         lh = np.zeros((self.k, X.shape[0]))
