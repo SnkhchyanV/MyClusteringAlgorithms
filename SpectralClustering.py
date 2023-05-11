@@ -31,6 +31,7 @@ class SpectralClustering:
             KMeans_clustering = KMeans(self.__n_clusters, n_init='auto')
             self.labels = KMeans_clustering.fit_predict(X)
         if self.__assign_labels == 'DBSCAN':
+            # This block isn't finished, it may work unproperly
             clusterer = DBSCAN()
             self.labels = clusterer.fit_predict(h_mtrx)
 
