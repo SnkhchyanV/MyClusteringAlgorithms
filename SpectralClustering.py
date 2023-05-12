@@ -11,34 +11,42 @@ class SpectralClustering:
         self.__kernel_params = kernel_params
         self.__affinity_mtrx = None
         self.labels = None
+        self.vector = None
 
     def fit(self, X):
 
         if self.__affinity == 'rbf':
-            self.__affinity_mtrx = self.__init_affinity_rbf(X, self.__kernel_params)
+            affinity_mtrx = self.__init_affinity_rbf(X, self.__kernel_params)
 
-        eig_w, eig_v = np.linalg.eig(self.__affinity_mtrx)
-        h_mtrx = np.ones((X.shape[0], 1))
-        max_ev_list = set()
-        for i in range(self.__n_clusters):
-            max_id = eig_w.argmax(axis=0)
-            max_ev_list.add(id)
-            h_mtrx = np.hstack((h_mtrx, eig_v[max_id].reshape(-1, 1)))
-            if max_id in max_ev_list:
-                np.delete(eig_w, max_id, axis=1)
 
+        d = np.sum(affinity_mtrx, axis=0)
+        L = np.zeros_like(affinity_mtrx)
+        L = L - affinity_mtrx
+        for i in range(len(d)):
+            for j in range(len(d)):
+                if i==j:
+                    L[i][j] = d[i]
+
+        self.__affinity_mtrx = L
+
+        eig_w, eig_v = np.linalg.eigh(self.__affinity_mtrx)
+        print(eig_v)
+
+        h_mtrx = eig_v[:, 0:self.__n_clusters]
+        #h_mtrx = np.hstack((np.ones((X.shape[0], 1)), h_mtrx))
+        print(h_mtrx)
+        self.vector = h_mtrx
         if self.__assign_labels == 'kmeans':
             KMeans_clustering = KMeans(self.__n_clusters, n_init='auto')
-            self.labels = KMeans_clustering.fit_predict(X)
-        if self.__assign_labels == 'DBSCAN':
-            clusterer = DBSCAN()
-            self.labels = clusterer.fit_predict(h_mtrx)
+            self.labels = KMeans_clustering.fit_predict(h_mtrx)
 
         return self
 
+    def get_self_vectors(self):
+        return self.vector
+
     def fit_predict(self, X):
-        self.fit(X)
-        return self.labels
+        return self.fit(X).labels
 
     def __init_affinity_rbf(self, X, kernel_params):
         n = X.shape[0]
@@ -50,6 +58,6 @@ class SpectralClustering:
         return affinity_mtrx
 
     def __Gaussian_Kernel(self, xi, xj, sigma):
-        diff = np.sum((xi - xj)**2)
-        w_i_j = (-diff)/(sigma**2)
-        return np.exp(w_i_j)
+        diff = np.linalg.norm(xi-xj)
+        w_i_j = diff**2/(sigma**2)
+        return np.exp(-w_i_j)
