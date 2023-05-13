@@ -26,7 +26,7 @@ class SpectralClustering:
         self.__affinity_mtrx = L
         eig_w, eig_v = np.linalg.eigh(self.__affinity_mtrx)
         count = 0
-        for i range(len(eig_w)):
+        for i in range(len(eig_w)):
             if eig_w[i]==0:
                 count+=1
         h_mtrx = eig_v[:, count:self.__n_clusters]
