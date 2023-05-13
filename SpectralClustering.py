@@ -25,7 +25,7 @@ class SpectralClustering:
 
         self.__affinity_mtrx = L
         eig_w, eig_v = np.linalg.eigh(self.__affinity_mtrx)
-        h_mtrx = eig_v[:, 0:self.__n_clusters]
+        h_mtrx = eig_v[:, 1:self.__n_clusters]
 
         if self.__assign_labels == 'kmeans':
             KMeans_clustering = KMeans(self.__n_clusters, n_init='auto')
