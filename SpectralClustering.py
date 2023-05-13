@@ -29,7 +29,7 @@ class SpectralClustering:
         for i in range(len(eig_w)):
             if eig_w[i]==0:
                 count+=1
-        h_mtrx = eig_v[:, count:self.__n_clusters]
+        h_mtrx = eig_v[:, count:self.__n_clusters+count]
 
         if self.__assign_labels == 'kmeans':
             KMeans_clustering = KMeans(self.__n_clusters, n_init='auto')
