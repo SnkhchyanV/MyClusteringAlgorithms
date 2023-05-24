@@ -13,10 +13,12 @@ class SpectralClustering:
         self.labels = None
 
     def fit(self, X):
-
-        if self.__affinity == 'rbf':
+        if self.__kernel_params == None:
+            return
+              
+        if self.__affinity == 'rbf' :
             affinity_mtrx = self.__init_affinity_rbf(X, self.__kernel_params)
-
+        
         d = np.sum(affinity_mtrx, axis=0)
         L = np.zeros_like(affinity_mtrx)
         L = L - affinity_mtrx
